@@ -1,0 +1,238 @@
+#! /bin/bash
+
+### BEGIN INIT INFO
+# Provides:          tor2web
+# Required-Start:    $local_fs $remote_fs $network $named $time tor
+# Required-Stop:     $local_fs $remote_fs $network $named $time
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start the Tor2web proxy.
+# Description:       Start the Tor2web proxy, an HTTP proxy software
+#                    that enables access to Tor Hidden Services by
+#                    mean of common web browsers.
+### END INIT INFO
+
+# Authors: Arturo Filasto' <art@globaleaks.org>
+#          Giovanni Pellerano <evilaliv3@globaleaks.org>
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+NAME=$(basename $(readlink -nf $0))
+
+DAEMON=tor2web
+
+# Configurable variables overridden in /etc/default/tor2web
+DAEMON_DIR=/home/tor2web
+DAEMON_PIDFILE=/var/run/tor2web/t2w.pid
+DAEMON_USER=tor2web
+# End of configurable variables
+
+DAEMON_ARGS="--pidfile ${DAEMON_PIDFILE} --uid ${DAEMON_USER} --gid ${DAEMON_USER}"
+
+STARTCMD="$DAEMON $DAEMON_ARGS"
+
+SCRIPTNAME=$0
+
+# Let's try to figure our some sane defaults:
+if [ -r /proc/sys/fs/file-max ]; then
+    system_max=`cat /proc/sys/fs/file-max`
+    if [ "$system_max" -gt "80000" ] ; then
+        MAX_FILEDESCRIPTORS=32768
+    elif [ "$system_max" -gt "40000" ] ; then
+        MAX_FILEDESCRIPTORS=16384
+    elif [ "$system_max" -gt "10000" ] ; then
+        MAX_FILEDESCRIPTORS=8192
+    else
+        MAX_FILEDESCRIPTORS=1024
+        cat << EOF
+
+Warning: Your system has very few filedescriptors available in total.
+
+Maybe you should try raising that by adding 'fs.file-max=100000' to your
+/etc/sysctl.conf file.  Feel free to pick any number that you deem appropriate.
+Then run 'sysctl -p'.  See /proc/sys/fs/file-max for the current value, and
+file-nr in the same directory for how many of those are used at the moment.
+
+EOF
+        fi
+else
+        MAX_FILEDESCRIPTORS=8192
+fi
+
+checks()
+{
+    if [[ $EUID -ne 0 ]]; then
+       log_failure_msg "Error: Tor2web init script must be run as root"
+       log_end_msg 1
+       exit 1
+    fi
+
+    if [ ! -d ${DAEMON_DIR} ]
+    then
+        log_failure_msg "unexistent DAEMON_DIR: ${DAEMON_DIR}"
+        log_end_msg 1
+        exit 1
+    fi
+
+    DAEMON=`which ${DAEMON}`
+    if [ ! ${DAEMON} ]; then
+        log_end_msg 1 "${DAEMON} is not installed"
+        exit 1
+    fi
+}
+
+. /lib/init/vars.sh
+
+# Define LSB log_* functions.
+# Depend on lsb-base (>= 3.2-14) to ensure that this file is present
+# and status_of_proc is working.
+. /lib/lsb/init-functions
+
+checks
+
+if test -e /etc/default/tor2web ; then
+    . /etc/default/tor2web
+else
+    echo "Error: missing tor2web default file"
+    exit 0
+fi
+
+if [[ "$APPARMOR_SANDBOXING" -eq "1" ]]; then
+    if [[ "$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null)" != 'Y' ]]; then
+        echo "WARNING: Missing Apparmor Sandboxing support"
+        APPARMOR_SANDBOXING=0
+    elif [[ "`apparmor_status | grep -c 'tor2web'`" -eq "0" ]]; then
+        service apparmor restart
+        if [[ "`apparmor_status | grep -c 'tor2web'`" -eq "0" ]]; then
+            echo "WARNING: Missing Apparmor Sandboxing support"
+            APPARMOR_SANDBOXING=0
+        fi
+    fi
+fi
+
+if [ -d "/etc/letsencrypt/live" ] && [ -d "/etc/letsencrypt/archive" ]; then
+    echo "Letsencrypt detected, fixing permission for /etc/letsencrypt/{live,archive} for $DAEMON_USER user"
+    chgrp $DAEMON_USER /etc/letsencrypt/live/
+    chgrp $DAEMON_USER /etc/letsencrypt/archive
+    chmod g+rx /etc/letsencrypt/archive
+    chmod g+rx /etc/letsencrypt/live
+fi
+
+if [[ "$APPARMOR_SANDBOXING" -eq "1" && "$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null)" != 'Y' ]]; then
+    echo "WARNING: Missing Apparmor Sandboxing support"
+    APPARMOR_SANDBOXING=0
+fi
+
+if [ "${APPARMOR_SANDBOXING}" -eq "1" ]; then
+    STARTCMD="aa-exec --profile=usr.bin.tor2web -- $STARTCMD"
+fi
+
+do_t2w_start()
+{
+    if [ -n "$MAX_FILEDESCRIPTORS" ]; then
+        ulimit -n "$MAX_FILEDESCRIPTORS"
+    fi
+
+    # Check to see if the daemon is already running.
+    $STARTCMD --command=status
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        log_end_msg 0 "already running"
+        exit 0
+    fi
+
+    $STARTCMD --command=start
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        log_end_msg 1 "couldn't start"
+        exit 1
+    fi
+}
+
+do_t2w_stop()
+{
+    $STARTCMD --command=stop
+}
+
+do_t2w_reload()
+{
+    $STARTCMD --command=reload
+}
+
+do_t2w_status()
+{
+    $STARTCMD --command=status
+    RETVAL=$?
+    if [ $RETVAL -eq 1 ]; then
+        log_failure_msg "Tor2web is not running"
+        exit 1
+    fi
+
+    if [ $RETVAL -eq 0 ]; then
+        log_success_msg "Tor2web is running"
+        exit 0
+    fi
+}
+
+do_start()
+{
+    /etc/init.d/tor start &
+    do_t2w_start
+}
+
+do_stop()
+{
+    do_t2w_stop
+    /etc/init.d/tor stop &
+}
+
+do_reload()
+{
+    do_t2w_reload
+}
+
+do_restart() {
+    do_t2w_stop
+    /etc/init.d/tor start
+    do_t2w_start
+}
+
+#
+# Function that queries the status of the daemon/service
+#
+
+case "$1" in
+  start)
+    log_action_begin_msg "Starting Tor2web" "tor2web"
+    [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
+    do_start
+    log_action_end_msg 0
+    exit 0
+    ;;
+  stop)
+    log_action_begin_msg "Stopping Tor2web" "tor2web"
+    [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
+    do_stop
+    log_action_end_msg 0
+    exit 0
+    ;;
+  status)
+    do_t2w_status
+    ;;
+  reload|force-reload)
+    log_action_begin_msg "Reloading Tor2web" "tor2web"
+    do_reload
+    log_action_end_msg 0
+    exit 0
+    ;;
+  restart)
+    log_action_begin_msg "Restarting Tor2web" "tor2web"
+    do_restart
+    log_action_end_msg 0
+    exit 0
+    ;;
+  *)
+    echo "Usage: $SCRIPTNAME {start|stop|status|restart|reload}" >&2
+    exit 3
+    ;;
+esac

@@ -1,0 +1,9 @@
+Googlebot
+Bingbot
+Slurp
+DuckDuckBot
+Baiduspider
+YandexBot
+Sogou
+Exabot
+ia_archiver

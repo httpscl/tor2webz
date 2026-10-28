@@ -1,0 +1,2 @@
+tar-ignore = Tor2web/.git
+tar-ignore = .gitignore

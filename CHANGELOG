@@ -1,0 +1,146 @@
+Changes in version 3.2.0 - 2019-10-01
+     o Add debian buster release
+     o Add support for Tor Onion Services v3
+     o Add support for TLS1.3
+     o Revise security TLS configuration
+     o Revise support for IPv6
+     o Revise Python3 compatibility
+
+Changes in version 3.1.74 - 2019-06-25
+     o Apply fixes to packaging for Ubuntu Bionic
+
+Changes in version 3.1.73 - 2019-05-14
+     o Add packaging for Ubuntu Bionic
+
+Changes in version 3.1.72 - 2017-10-11
+     o Apply minor bugfixing
+
+Changes in version 3.1.71 - 2017-09-21
+     o Revise installation scripts in relation to xenial release
+
+Changes in version 3.1.70 - 2017-08-20
+     o Update dependencies
+
+Changes in version 3.1.69 - 2017-03-05
+     o Align dependencies versions to the one used in GlobaLeaks
+
+Changes in version 3.1.68 - 2017-01-27
+     o Fix regular expressions used fro url rewriting
+
+Changes in version 3.1.67 - 2017-01-27
+     o Fix issue #319
+
+Changes in version 3.1.66 - 2017-01-19
+     o Implement subprocessing avoiding connection close
+       when reaching request number limit
+
+Changes in version 3.1.65 - 2017-01-17
+     o Apply minor bugfixing
+
+Changes in version 3.1.64 - 2017-01-17
+     o Apply minor bugfixing
+
+Changes in version 3.1.63 - 2017-01-10
+     o Apply minor bugfixing
+
+Changes in version 3.1.62 - 2017-01-10
+     o Remove experimental code
+
+Changes in version 3.1.61 - 2017-01-10
+     o Packaging fixes
+
+Changes in version 3.1.60 - 2017-01-10
+     o Apply minor bugfixing
+
+Changes in version 3.1.59 - 2016-12-30
+     o Apply minor bugfixing
+
+Changes in version 3.1.58 - 2016-12-27
+     o Remove pyc files from packaging following Debian guidelines
+
+Changes in version 3.1.57 - 2016-12-11
+     o Apply minor bugfixing
+
+Changes in version 3.1.56 - 2016-11-07
+     o Apply minor rewrites
+
+Changes in version 3.1.55 - 2016-11-07
+     o Fix regression in TRANSLATION mode added in version 3.1.52
+
+Changes in version 3.1.54 - 2016-10-24
+     o Fix issue #250
+
+Changes in version 3.1.53 - 2016-10-16
+     o Fix packaging in relation to zope library
+
+Changes in version 3.1.52 - 2016-07-01
+     o Refactor install script removing requirement for updating it
+       when the signing PGP key is updated.
+     o Make log rotation keep only recent logs entries.
+     o Automagically fix mixed contents warnings on HTTPs
+     o Update default configuration for GlobaLeaks integration
+     o Add dummy proxy support in hostsmap configuration
+
+Changes in version 3.1.51 - 2016-02-25
+     o Add configurable bufsize for fine tuning of memory
+
+Changes in version 3.1.50 - 2016-02-25
+     o Fix regexp in relation to domains onion.something #287
+
+Changes in version 3.1.49 - 2016-02-05
+    o Fix syntax error in apparmor script
+    o Add example configuration for globaleaks
+
+Changes in version 3.1.48 - 2016-01-26
+    o Fix issue #285
+
+Changes in version 3.1.47 - 2016-01-26
+    o Fix regexp based blocking implementation
+
+Changes in version 3.1.46 - 2016-01-26
+    o Implement url blocking based on directories
+    o Implement url blocking based on regexps
+    o Fix issue preventing the update of exit nodes addresses
+
+Changes in version 3.1.45 - 2016-01-10
+    o Fix failure in SSL initialization (#274)
+    o Simplify design of mail notifications and add default configuration
+
+Changes in version 3.1.44 - 2016-01-06
+    o Automate generation of DH parameters (#260)
+    o Replace onionoo with check.torproject.org/exit-addresses (#125)
+
+Changes in version 3.1.43 - 2015-12-26
+    o Update and stabilize dependencies based on packaged debian versions
+    o Implement path blocklists and subdomain blocklist
+
+Changes in version 3.1.42 - 2015-06-22
+    o Improve init script error outputs
+    o Fix bug in intermediate certificates loading
+
+Changes in version 3.1.41 - 2015-06-08
+    o Implement rewriting of css and xml files
+    o Allow crawlers to bypass the disclaimer
+
+Changes in version 3.1.40 - 2015-06-07
+    o Improve packaging
+    o Implement rewriting of javascript files
+    o Optimize rewriting
+    o Add HTML example for CheckTor.js
+
+Changes in version 3.1.39 - 2015-02-22
+    o Added CheckTor feature
+    o Added GetTor feature
+    o Minor corrections
+
+Changes in version 3.1.38 - 2015-02-10
+    o Added missing support for cookies mangling
+    o Added support for disabling automagic onion redirect
+    o Added support for X-Forwarded-For handling
+    o Minor improvals
+
+Changes in version 3.1.37 - 2014-12-29
+    o Refactored Debian Packaging
+
+Changes in version 3.1.36 - 2014-12-25
+    o Refactored Debian Packaging

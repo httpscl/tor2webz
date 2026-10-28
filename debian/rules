@@ -1,0 +1,35 @@
+#!/usr/bin/make -f
+
+export PYBUILD_NAME=tor2web
+export PYBUILD_DISABLE=test
+export PYBUILD_INSTALL_ARGS=--no-compile
+
+DISTRIBUTION := $(shell head -n1  debian/changelog | cut -d ' ' -f3 | cut -d ';' -f1)
+
+ifeq ($(DISTRIBUTION),buster)
+        PYTHON_BIN := python3
+        PYTHON_VER := python3
+else ifeq ($(DISTRIBUTION),bionic)
+        PYTHON_BIN := python3
+        PYTHON_VER := python3
+else
+        PYTHON_BIN := python2
+        PYTHON_VER := python2
+endif
+
+
+%:
+	dh $@ --with $(PYTHON_VER) --buildsystem=pybuild
+
+override_dh_install:
+	dh_apparmor --profile-name=usr.bin.tor2web
+	dh_install --fail-missing
+
+override_dh_python2:
+	dh_python2 --no-guessing-deps --no-guessing-versions
+
+override_dh_python_3:
+	dh_python3 --no-guessing-deps
+
+override_dh_installinit:
+	dh_installinit --no-start --update-rcd-params="defaults 99"

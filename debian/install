@@ -1,0 +1,3 @@
+data usr/share/tor2web/
+debian/apparmor/usr.bin.tor2web etc/apparmor.d/
+requirements.txt usr/share/tor2web/

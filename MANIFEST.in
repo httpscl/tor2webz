@@ -1,0 +1,8 @@
+include requirements.txt
+include debian/*
+include bin/tor2web
+graft data
+recursive-include requirements *.txt
+recursive-include tests *.py
+recursive-include examples *.conf
+include docs/MODERNIZATION.md

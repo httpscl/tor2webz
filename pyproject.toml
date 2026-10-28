@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=82"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tor2webz"
+dynamic = ["version"]
+description = "A modernized Tor2web HTTP gateway for v3 onion services"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "AGPL-3.0-only"
+license-files = ["LICENSE"]
+dependencies = [
+    "Twisted[tls]==26.10.0rc2",
+    "pyOpenSSL>=26.4.0,<27",
+    "cryptography>=50.0.2,<51",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=9,<10"]
+
+[project.scripts]
+tor2web = "tor2web.t2w:main"
+tor2webz = "tor2web.t2w:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "tor2web.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["tor2web", "tor2web.*"]
+
+[tool.setuptools.data-files]
+"share/tor2web/data/static" = ["data/static/*"]
+"share/tor2web/data/templates" = ["data/templates/*"]
+"share/tor2web/data/lists" = ["data/lists/*"]
+"share/tor2web/data/conf" = ["data/conf/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -6,8 +6,6 @@
    ██║   ╚██████╔╝██║  ██║███████╗╚███╔███╔╝███████╗██████╔╝███████╗
    ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚══════╝╚═════╝ ╚══════╝
 ```                                                                    
-# Tor2webz
-
 Tor2webz is an independent modernization of [Tor2web](https://github.com/tor2web/Tor2web),
 the HTTP gateway originally developed by Aaron Swartz and Virgil Griffith and
 subsequently maintained by the GlobaLeaks/Hermes community. Original attribution

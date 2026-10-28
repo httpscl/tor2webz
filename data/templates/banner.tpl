@@ -1,43 +1,17 @@
 <div xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-  <script type="text/javascript" src="/antanistaticmap/tor2web.js"></script>
-  <style type="text/css">
-  @import url(/antanistaticmap/tor2web.css);
-  </style>
-
-  <div id="tor2web-banner">
-    <div id="tor2web-visible">
-      <div id="tor2web_logo">
-        <a href="https://www.tor2web.org"><img src="/antanistaticmap/tor2web-small.png" alt="tor2web logo" /></a>
-      </div>
-      <div id="tor2web_banner_text">
-        <div>This Tor2web server does not host any content but acts simply as proxy serving contents hosted inside the <a href="https://www.torproject.org/docs/hidden-services.html.en">Tor network</a>.</div>
-        <div>Please be aware that when you access this content via this site you are not anonymous. To obtain anonymity, you are strongly advised to download the <a href="https://www.torproject.org/download/">Tor Browser</a> and access this content over Tor.</div>
-        <div>Please send us your <a href="javascript:show_hide_notification_form()">feedback</a> and if you have concerns with this content, send us an <a href="javascript:show_hide_notification_form()">abuse notice</a>.</div>
-        <div>For more informations please refer to <a href="/antanistaticmap/tos.html">Tor2web Terms of Services.</a></div>
-        <div><t:transparent t:render="source" /></div>
-        <div><t:transparent t:render="mirror" /></div>
-      </div>
-      <div id="tor2web_notification_form">
-        <fieldset>
-          <legend>Notification:</legend>
-          BY:
-         <div><input type="text" id="by" name="by" /></div>
-         URL:
-         <div><input type="text" id="url" name="url" /></div>
-         COMMENT:
-         <div><textarea type="text" id="comment" name="comment" rows="10" cols="20"></textarea></div>
-         <div><input type="button" value="Send" onclick="sendNotification()" /></div>
-        </fieldset>
-      </div>
-      <div style="clear:both"></div>
-      <div class="tor2web_showhide">
-        <a href="javascript:show_hide_tor2web_header('true')">hide Tor2web header</a>
-      </div>
-    </div>
-    <div id="tor2web-hidden">
-      <div class="tor2web_showhide">
-        <a href="javascript:show_hide_tor2web_header('false')">show Tor2web header</a>
-      </div>
-    </div>
-  </div>
+<style type="text/css">@import url(/static/tor2webz-banner.css?v=t2w);</style>
+<div id="t2wz-banner">
+<div class="t2wz-top">
+<a href="https://onion.https.cl/" target="_blank" rel="noopener noreferrer" aria-label="Ir a la portada de TOR2WEBZ"><img src="/static/tor2webz-logo-banner.png?v=5500b118" width="422" height="228" alt="TOR2WEBZ"/></a>
+<span class="t2wz-label">HTTPS.CL / Onion gateway</span>
+<button id="t2wz-toggle" type="button" aria-expanded="true">Ocultar banner</button>
+</div>
+<div class="t2wz-body">
+<strong>TOR2WEBZ no aloja el contenido que estás viendo.</strong> Este servidor actúa únicamente como proxy para facilitar el acceso a sitios alojados dentro de la red Tor. El contenido es publicado y administrado por el servicio onion de origen. Navegar mediante esta pasarela no te hace anónimo; para ello, utiliza Tor Browser. Si tienes algún problema con este contenido, puedes enviarnos un <a id="t2wz-report-abuse" href="https://onion.https.cl/?contact=abuse" target="_blank" rel="noopener noreferrer">reporte de abuso</a>. Consulta nuestros <a href="https://onion.https.cl/static/tos.html" target="_blank" rel="noopener noreferrer">Términos de servicio</a>.<span class="t2wz-source">
+<t:transparent t:render="source"/>
+</span>
+</div>
+</div>
+<script src="/static/tor2webz-banner.js?v=abuse-url" defer="defer">
+</script>
 </div>

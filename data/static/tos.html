@@ -1,27 +1,51 @@
-<html>
-  <head>
-  <title>Tor2web Terms of Service</title>
-  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
-  <meta http-equiv="content-language" content="en" />
-  <meta name="robots" content="noindex" />
-  </head>
-  <body id="tor2web">
-  <script type="text/javascript" src="/antanistaticmap/tor2web.js"></script>
-  <style type="text/css">
-    @import url(/antanistaticmap/tor2web.css);
-  </style>
-  <div id="tor2web-wrapper">
-    <div id="header">
-      <h1><a href="https://www.tor2web.org"><img src="/antanistaticmap/tor2web.png" alt="tor2web logo" /></a></h1>
-    </div>
-    <div id="tor2web-content">
-      <h2 id="tor2web-title">Tor2web Terms of Service</h2>
-      <p>
-        Warning: Tor2web Node Terms of Service Not Configured<br />
-        This could lead to risks and legal Implications for the legal entity behind the Tor2web node<br /><br />
-        It's suggested to stop the software and to fill the template file $t2wdir$/static/tos.html with TOS compliant to the appropriate jurisdiction.
-      </p>
-    </div>
-  </div>
-  </body>
+<html lang="es" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="/static/favicon.ico">
+<link rel="stylesheet" href="/static/tor2webz-site.css">
+<title>TOR2WEBZ | Términos de servicio</title>
+</head>
+<body>
+<div class="page">
+<header class="site-header">
+<span class="brand">
+<img src="/static/tor2webz-logo.png?v=f1fd6842" width="1014" height="228" alt="TOR2WEBZ">
+</span>
+</header>
+<main>
+<section class="access-panel">
+<header class="panel-header">
+<span class="panel-title">TOR2WEBZ / Términos de servicio</span>
+<span class="panel-status">ONION V3</span>
+</header>
+<div class="panel-body">
+<h1>Términos de servicio.</h1>
+<p class="intro terms-intro">TOR2WEBZ actúa únicamente como proxy para facilitar el acceso a contenido alojado dentro de la red Tor. No aloja ni administra el contenido de los servicios onion: cada sitio de origen publica y controla sus propias páginas.</p>
+<h2>Contenido prohibido</h2>
+<p>No se permite utilizar esta pasarela para acceder a:</p>
+<ul>
+<li><strong>Material de abuso sexual infantil (CP).</strong></li>
+<li><strong>Enlaces para la descarga, distribución u operación de ransomware.</strong></li>
+</ul>
+<p>Al detectar contenido de estas categorías, actuamos de inmediato bloqueando su acceso a través de TOR2WEBZ. Este bloqueo afecta a nuestra pasarela; no elimina el contenido del servicio onion de origen.</p>
+<p>Nos reservamos el derecho de hacer públicas las URL cuyo acceso bloqueemos a través de TOR2WEBZ.</p>
+<h2>Reportes de abuso</h2>
+<p>Si detectas contenido prohibido, utiliza el formulario de abuso e indica la dirección del servicio onion y una descripción breve.</p>
+<p><a class="text-button terms-report" href="https://onion.https.cl/?contact=abuse">Reportar abuso</a></p>
+<h2>Funcionamiento de la pasarela</h2>
+<p>La compatibilidad con sitios, sesiones y descargas es limitada. Esta pasarela no proporciona anonimato; para navegar con las protecciones de Tor, utiliza Tor Browser directamente.</p>
+<button class="reload-button" id="terms-back" type="button">← Volver</button>
+</div>
+</section>
+</main>
+<footer class="site-footer">
+<span>HTTPS.CL | TOR2WEBZ · ONION V3 GATEWAY</span>
+</footer>
+</div>
+<script src="/static/tor2webz-ui.js" defer="defer">
+</script>
+</body>
 </html>

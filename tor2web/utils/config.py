@@ -65,9 +65,9 @@ class Config(Storage):
         self.__dict__['debugtostdout'] = True
         self.__dict__['processes'] = 1
         self.__dict__['requests_per_process'] = 1000000
-        self.__dict__['transport'] = 'BOTH'
-        self.__dict__['listen_ipv4'] = '0.0.0.0'
-        self.__dict__['listen_ipv6'] = '::'
+        self.__dict__['transport'] = 'HTTPS'
+        self.__dict__['listen_ipv4'] = '127.0.0.1'
+        self.__dict__['listen_ipv6'] = None
         self.__dict__['listen_port_http'] = 80
         self.__dict__['listen_port_https'] = 443
         self.__dict__['basehost'] = 'AUTO'
@@ -100,11 +100,13 @@ class Config(Storage):
         self.__dict__['automatic_blocklist_updates_refresh'] = 600
         self.__dict__['automatic_blocklist_updates_mode'] = "MERGE"
         self.__dict__['publish_blocklist'] = False
+        self.__dict__['publish_stats'] = False
         self.__dict__['mirror'] = []
         self.__dict__['dummyproxy'] = None
         self.__dict__['proto'] = 'http://' if self.__dict__['transport'] == 'HTTP' else 'https://'
         self.__dict__['bufsize'] = 4096
         self.__dict__['max_request_body_bytes'] = 8 * 1024 * 1024
+        self.__dict__['max_response_bytes'] = 16 * 1024 * 1024
         self.__dict__['max_concurrent_requests'] = 16
         self.__dict__['request_timeout'] = 60
         self.__dict__['source_url'] = None
@@ -169,9 +171,13 @@ class Config(Storage):
         self.verify_values('disable_banner', [True, False])
         self.verify_values('disable_gettor', [True, False])
         self.verify_values('disable_tor_redirection', [True, False])
+        self.verify_values('publish_stats', [True, False])
         self.verify_values('proto', ['http://', 'https://'])
 
-        for name in ('max_request_body_bytes', 'max_concurrent_requests', 'request_timeout', 'processes'):
+        if self.smtpmailto_notifications or self.smtpmailto_exceptions:
+            raise ValueError('built-in SMTP notifications are disabled in Tor2webz')
+
+        for name in ('max_request_body_bytes', 'max_response_bytes', 'max_concurrent_requests', 'request_timeout', 'processes'):
             if type(self.__dict__[name]) is not int or self.__dict__[name] <= 0:
                 raise ValueError('%s must be a positive integer' % name)
 

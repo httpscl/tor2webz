@@ -1,22 +1,38 @@
-<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-  <head>
-    <title>Tor2web Error: Access Denied</title>
-    <meta http-equiv="content-type" content="text/html;charset=utf-8" />
-    <meta http-equiv="content-language" content="en" />
-    <meta name="robots" content="noindex" />
-    <script type="text/javascript" src="/antanistaticmap/tor2web.js"></script>
-    <link rel="stylesheet" type="text/css" href="/antanistaticmap/tor2web.css" />
-  </head>
-  <body>
-    <div id="tor2web">
-      <div id="header">
-        <h1><a href="https://www.tor2web.org"><img src="/antanistaticmap/tor2web.png" alt="tor2web logo" /></a></h1>
-      </div>
-      <div id="tor2web-content">
-        <h2 id="tor2web-title">Tor2web Error: Access Denied to Specific Hidden Service Page</h2>
-        <p>Access to the following page been blocked.</p><br />
-        <p>It may happen that Tor2web maintainers have to block proxy access for certain explicit illegal contents in order to keep the network up and running. In such case you can still access the content directly by using Tor, that's because Tor2web just acts as a proxy server and the content is on a Tor Hidden Service.</p>
-      </div>
-    </div>
-  </body>
+<html lang="es" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="icon" href="/static/favicon.ico"/>
+<link rel="stylesheet" href="/static/tor2webz-site.css"/>
+<title>TOR2WEBZ | Acceso restringido.</title>
+</head>
+<body>
+<div class="page">
+<header class="site-header">
+<span class="brand">
+<img src="/static/tor2webz-logo.png?v=f1fd6842" width="1014" height="228" alt="TOR2WEBZ"/>
+</span>
+</header>
+<main>
+<section class="access-panel">
+<header class="panel-header">
+<span class="panel-title">TOR2WEBZ / Acceso restringido</span>
+<span class="panel-status">ONION V3</span>
+</header>
+<div class="panel-body">
+<h1>Acceso restringido.</h1>
+<p class="intro">Este servicio no está disponible a través de esta pasarela.</p>
+<button type="button" class="reload-button" onclick="window.location.reload()">Volver a intentar</button>
+</div>
+</section>
+</main>
+<footer class="site-footer">
+<span>HTTPS.CL | TOR2WEBZ · ONION V3 GATEWAY</span>
+</footer>
+</div>
+<script src="/static/tor2webz-ui.js" defer="defer">
+</script>
+</body>
 </html>

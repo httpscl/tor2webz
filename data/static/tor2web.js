@@ -33,7 +33,7 @@ function sendNotification() {
   var comment = document.getElementById('comment').value;
   var params = "by="+by+"&url="+url+"&comment="+comment;
 
-  http.open("POST", "/antanistaticmap/notification", true);
+  http.open("POST", "/static/notification", true);
 	
   http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 

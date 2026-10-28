@@ -19,7 +19,7 @@ HTTP request is emitted.
 
 Gateway cookies are host-only, forwarding client identity headers are stripped,
 and clearnet redirect destinations are rejected. Default email recipients and
-demo credentials are removed, so notifications need explicit configuration.
+demo credentials are removed; built-in SMTP notifications are disabled.
 Persistent access logging is off by default; debug logging is opt-in.
 
 ## Verification boundary
@@ -57,3 +57,35 @@ resources under bounded load, and verify isolation and the served source offer.
 - Changed/new text files passed a credential/private-topology pattern scan and
   manual diff review. Generated certificates, environments, runtime state and
   build outputs are excluded from Git.
+
+## Deployed production-hardening update
+
+The deployed update bounds raw, decoded and forwarded onion responses to 16 MiB,
+including gzip expansion. It rejects automatic browser redirects outside valid
+v3 onion destinations and this gateway, and strips upstream Refresh, Link,
+Alt-Svc and browser reporting headers. CSP reporting directives are removed
+while other upstream CSP directives remain. Valid onion origins in CSP source
+expressions are translated to gateway origins, including `form-action` and
+`connect-src`; nonce/hash values and unrelated allowlists remain intact. `/checktor` no longer returns a
+visitor IP or permissive CORS headers. Usage statistics are disabled unless
+explicitly enabled; the default listener is loopback HTTPS.
+
+The production Nginx edge has separately gained a 64-connection global limit,
+shorter body/header timeouts, a no-referrer policy, and filtering for upstream
+headers that can initiate browser requests. These changes were verified on the
+live edge while the application stayed on the prior published commit.
+
+The application update is deployed from the internal source snapshot. The owner
+controls the final public GitHub publication after production acceptance. The
+HTTPS.CL operator UI uses local assets and does not load remote fonts or scripts.
+A separate bounded contact service supports authenticated SMTP delivery; runtime
+credentials are excluded from source.
+
+Compatibility regressions cover unknown-length/chunked responses and HTTPS
+301/302 redirects after POST, using browser-style conversion to GET. Streaming
+limits continue to apply when Content-Length is unknown. Upstream error logs
+record exception classes without URLs or query values.
+
+After the one-hop internal HTTPS upgrade budget, remaining redirects are
+validated and forwarded to the browser rather than converted into a 502. An
+upstream service's Tor/bot refusal remains an upstream refusal.

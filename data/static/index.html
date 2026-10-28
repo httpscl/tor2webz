@@ -1,10 +1,126 @@
-<html>
+<!doctype html>
+<html lang="es">
 <head>
-<title>Tor2web</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="/static/favicon.ico">
+<link rel="stylesheet" href="/static/tor2webz-site.css">
+<title>TOR2WEBZ</title>
 </head>
 <body>
-<center>
-<a href="http://www.tor2web.org"><img src="/antanistaticmap/tor2web-big.png"/></a>
-</center>
+<div class="page">
+<header class="site-header">
+<span class="brand">
+<img src="/static/tor2webz-logo.png?v=f1fd6842" width="1014" height="228" alt="TOR2WEBZ">
+</span>
+</header>
+<main>
+<section class="access-panel" aria-labelledby="access-title">
+<header class="panel-header">
+<span class="panel-title">TOR2WEBZ / Onion gateway</span>
+<span class="panel-status">HTTPS · V3</span>
+</header>
+<div class="panel-body">
+<h1 id="access-title">Accede a la red onion.</h1>
+<p class="intro">Abre un servicio <strong>.onion v3</strong> desde tu navegador. TOR2WEBZ actúa únicamente como proxy: facilita el acceso a contenido alojado en Tor, sin alojarlo en este servidor.</p>
+<form id="gateway">
+<label class="gateway-label" for="onion">Dirección del servicio</label>
+<input class="gateway-input" id="onion" name="onion" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Pega una dirección .onion v3" required aria-describedby="gateway-error">
+<button class="reload-button" type="submit">
+<span>Abrir servicio</span>
+<span aria-hidden="true">↗</span>
+</button>
+<p class="form-error" id="gateway-error" role="alert">
+</p>
+</form>
+<div class="panel-actions">
+<button type="button" class="text-button" data-open="privacy">Funcionamiento y condiciones</button>
+<button type="button" class="text-button" data-open="contact">Contacto</button>
+<a class="text-button" href="https://onion.https.cl/static/tos.html">Términos de servicio</a>
+</div>
+</div>
+<aside class="support">
+<span class="support-mark">//</span>
+<span class="support-copy">
+<strong>TOR2WEBZ no aloja el contenido de los sitios onion.</strong>
+<p>El contenido es publicado y administrado por cada servicio de origen. Esta pasarela solo facilita su acceso. No proporciona anonimato; para eso, utiliza Tor Browser.</p>
+</span>
+</aside>
+</section>
+</main>
+<footer class="site-footer">
+<span>HTTPS.CL | TOR2WEBZ · ONION V3 GATEWAY</span>
+</footer>
+</div>
+<dialog class="site-dialog" id="privacy">
+<header class="panel-header">
+<span class="panel-title">TOR2WEBZ / Funcionamiento</span>
+<button class="dialog-close" data-close="privacy" aria-label="Cerrar">×</button>
+</header>
+<div class="panel-body">
+<h2>Antes de continuar.</h2>
+<p class="intro"><strong>TOR2WEBZ es un proxy de acceso a la red Tor.</strong> No aloja ni administra el contenido que muestran los servicios onion.
+</p>
+<ol class="steps">
+<li class="step">
+<span class="step-number">01</span>
+<span class="step-copy">
+<strong>El contenido se aloja en Tor</strong>
+<span>Cada servicio onion publica y administra su propio contenido.</span>
+</span>
+</li>
+<li class="step">
+<span class="step-number">02</span>
+<span class="step-copy">
+<strong>Consultas y reportes de abuso</strong>
+<span>Usa el formulario de contacto y selecciona el tipo de mensaje correspondiente.</span>
+</span>
+</li>
+<li class="step">
+<span class="step-number">03</span>
+<span class="step-copy">
+<strong>La compatibilidad es limitada</strong>
+<span>Algunas páginas, sesiones y descargas pueden no funcionar. La pasarela no proporciona anonimato; utiliza Tor Browser si lo necesitas.</span>
+</span>
+</li>
+</ol>
+<button type="button" class="reload-button" data-close="privacy">Entendido</button>
+</div>
+</dialog>
+<dialog class="site-dialog" id="contact">
+<header class="panel-header">
+<span class="panel-title">TOR2WEBZ / Contacto</span>
+<button class="dialog-close" data-close="contact" aria-label="Cerrar">×</button>
+</header>
+<div class="panel-body">
+<h2>Contacta al operador.</h2>
+<p class="intro">Destino: <strong id="contact-destination">contacto@https.cl</strong>.</p>
+<p id="abuse-notice" hidden>Consulta los <a class="text-button" href="https://onion.https.cl/static/tos.html" target="_blank" rel="noopener noreferrer">Términos de servicio</a>. Para reportar abuso, indica la URL y una descripción.</p>
+<form id="contact-form">
+<label class="gateway-label" for="contact-kind">Tipo de mensaje</label>
+<select class="contact-input" id="contact-kind" name="kind">
+<option value="contact">Contacto</option>
+<option value="abuse">Reporte de abuso</option>
+</select>
+<input name="website" id="contact-website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-10000px"/>
+<div id="abuse-url-field" hidden>
+<label class="gateway-label" for="abuse-url">URL que infringe los términos</label>
+<input class="contact-input" id="abuse-url" name="url" type="url" maxlength="2048" placeholder="https://sitio.onion/ruta" disabled>
+</div>
+<label class="gateway-label" for="contact-email">Tu correo</label>
+<input class="contact-input" id="contact-email" name="email" type="email" maxlength="254" required autocomplete="email">
+<label class="gateway-label" for="contact-message">Mensaje</label>
+<textarea class="contact-input" id="contact-message" name="message" maxlength="4000" required>
+</textarea>
+<button class="reload-button" id="contact-submit" type="submit" disabled>Envío temporalmente no disponible</button>
+<p class="form-error" id="contact-status" role="status">
+</p>
+</form>
+</div>
+</dialog>
+<script src="/static/tor2webz-ui.js?v=abuse-url" defer>
+</script>
 </body>
 </html>

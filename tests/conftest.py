@@ -1,5 +1,6 @@
 """Loopback-only integration harness; no Tor daemon or external onion traffic."""
 import base64
+import gzip
 import hashlib
 import http.client
 import os
@@ -63,6 +64,14 @@ class SocksHandler(socketserver.StreamRequestHandler):
                 headers[name.lower()] = value.strip()
             body = self.rfile.read(int(headers.get('content-length', '0')))
             self.server.requests.put((target, port, method, path, headers, body))
+            if path in ('/chunked-response', '/chunked-oversized'):
+                content = b'x' * 2048 if path == '/chunked-oversized' else b'chunked payload'
+                mime = b'text/html' if path == '/chunked-oversized' else b'text/plain'
+                self.connection.sendall(b'HTTP/1.1 200 OK\r\nContent-Type: ' + mime + b'\r\nTransfer-Encoding: chunked\r\n\r\n' + format(len(content), 'x').encode() + b'\r\n' + content + b'\r\n0\r\n\r\n')
+                continue
+            if path == '/close-delimited-response':
+                self.connection.sendall(b'HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nclose-delimited payload')
+                return
             if path == '/slow':
                 time.sleep(2)
             status = b'200 OK'
@@ -76,6 +85,32 @@ class SocksHandler(socketserver.StreamRequestHandler):
                 status = b'302 Found'
                 content, mime = b'', b'text/plain'
                 extra = b'Location: http://' + ONION.encode() + b'/short\r\n'
+            elif path in ('/external-http', '/external-https', '/external-relative'):
+                status = b'302 Found'
+                content, mime = b'', b'text/plain'
+                target = {
+                    '/external-http': b'http://example.com/',
+                    '/external-https': b'https://example.com/',
+                    '/external-relative': b'//example.com/',
+                }[path]
+                extra = b'Location: ' + target + b'\r\n'
+            elif path == '/refresh':
+                content, mime = b'ok', b'text/plain'
+                extra = b'Refresh: 0;url=https://example.com/\r\n'
+            elif path == '/response-hints':
+                content, mime = b'ok', b'text/plain'
+                extra = (b'Link: <https://example.com/track>; rel=preload\r\n'
+                         b'Content-Security-Policy-Report-Only: default-src none; report-uri https://example.com/report\r\n'
+                         b"Content-Security-Policy: default-src 'self'; form-action https://" + ONION.encode() + b"/search; connect-src https://" + ONION.encode() + b"; script-src 'nonce-AbC' https://example.com; object-src 'none'; report-uri https://example.com/report\r\n"
+                         b'Reporting-Endpoints: default="https://example.com/report"\r\n')
+            elif path == '/oversized':
+                content, mime = b'x' * 2048, b'application/octet-stream'
+            elif path in ('/uppercase', '/uppercase-long', '/multiline-body'):
+                opening = b'<BODY\n class="site">' if path == '/multiline-body' else b'<BODY>'
+                content, mime = b'<HTML>' + opening + (b'x' * (16384 if path == '/uppercase-long' else 20)) + b'</BODY></HTML>', b'text/html'
+            elif path == '/bomb':
+                content, mime = gzip.compress(b'x' * 2048), b'text/html'
+                extra = b'Content-Encoding: gzip\r\n'
             else:
                 content = b'<html><body><a href="http://' + ONION.encode() + b'/next">link</a></body></html>'
                 mime = b'text/html'
@@ -144,6 +179,7 @@ disable_tor_redirection = True
 exit_node_list_refresh = 0
 socksport = {server.server_address[1]}
 max_request_body_bytes = 1024
+max_response_bytes = {options.get('max_response_bytes', 16 * 1024 * 1024)}
 max_concurrent_requests = {options.get('max_concurrent_requests', 16)}
 request_timeout = {options.get('request_timeout', 60)}
 ''')

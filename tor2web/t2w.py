@@ -72,10 +72,58 @@ def test_file_access(f):
     return os.path.exists(f) and os.path.isfile(f) and os.access(f, os.R_OK)
 
 
+def safe_browser_redirect(location, basehost):
+    """Keep automatic HTTP redirects on this gateway or a valid v3 onion."""
+    if not location or any(c < 32 or c == 127 for c in location) or b'\\' in location:
+        return False
+    try:
+        parsed = urlsplit(location.decode('latin-1'))
+        if not parsed.scheme and not parsed.netloc:
+            return True
+        if parsed.scheme not in ('http', 'https') or not parsed.hostname:
+            return False
+        if parsed.username is not None or parsed.password is not None:
+            return False
+        host = parsed.hostname.lower()
+        if is_onion(host):
+            return parsed.port in (None, 80 if parsed.scheme == 'http' else 443)
+        suffix = '.' + basehost
+        if parsed.scheme == 'https' and host.endswith(suffix):
+            return parsed.port in (None, 443) and is_onion(host[:-len(suffix)] + '.onion')
+    except (UnicodeError, ValueError):
+        return False
+    return False
+
+
+CSP_ONION_SOURCE = re.compile(
+    rb'(?:(https?)://)?([a-z2-7]{56})\.onion(?::([0-9]+))?(/[^\s]*)?\Z', re.I)
+
+
+def rewrite_csp(value, basehost, proto, port):
+    """Translate valid onion CSP source origins to their gateway equivalents."""
+    directives = []
+    for directive in value.split(b';'):
+        parts = directive.split()
+        if not parts or parts[0].lower() in (b'report-uri', b'report-to'):
+            continue
+        rewritten = [parts[0]]
+        for token in parts[1:]:
+            match = CSP_ONION_SOURCE.fullmatch(token)
+            if match and is_onion(match[2].decode('ascii') + '.onion'):
+                scheme = (match[1] or proto[:-3]).lower()
+                expected_port = b'80' if scheme == b'http' else b'443'
+                if match[3] is None or match[3] == expected_port:
+                    token = (proto + match[2].lower() + b'.' + basehost.encode('ascii')
+                             + port.encode('ascii') + (match[4] or b''))
+            rewritten.append(token)
+        directives.append(b' '.join(rewritten))
+    return b'; '.join(directives)
+
+
 class T2WRPCServer(pb.Root):
     def __init__(self, config):
         self.config = config
-        self.stats = T2WStats()
+        self.stats = T2WStats() if config.publish_stats else None
         self.block_list = []
         self.block_regexps = []
         self.crawler_list = []
@@ -139,10 +187,11 @@ class T2WRPCServer(pb.Root):
         return dict(self.hosts_map)
 
     def remote_update_stats(self, onion):
-        self.stats.update(onion)
+        if self.stats is not None:
+            self.stats.update(onion)
 
     def remote_get_yesterday_stats(self):
-        return self.stats.yesterday_stats
+        return self.stats.yesterday_stats if self.stats is not None else '{}'
 
     def remote_log_access(self, line):
         t2w_daemon.logfile_access.write(line)
@@ -236,13 +285,28 @@ class Tor2webObj(object):
         self.client_uses_tor = False
 
 
+class ResponseTooLarge(Exception):
+    """An onion response exceeded this gateway's resource budget."""
+
+
 class BodyStreamer(protocol.Protocol):
-    def __init__(self, streamfunction, finished):
+    def __init__(self, streamfunction, finished, max_bytes):
         self._finished = finished
         self._streamfunction = streamfunction
+        self._max_bytes = max_bytes
+        self._received = 0
 
     def dataReceived(self, data):
-        self._streamfunction(data)
+        if self._finished.called:
+            return
+        self._received += len(data)
+        try:
+            if self._received > self._max_bytes:
+                raise ResponseTooLarge()
+            self._streamfunction(data)
+        except Exception:
+            self._finished.errback()
+            self.transport.abortConnection()
 
     def connectionLost(self, reason):
         if self._finished.called:
@@ -251,6 +315,11 @@ class BodyStreamer(protocol.Protocol):
             self._finished.callback(b'')
         else:
             self._finished.errback(reason)
+
+
+class AbortUpstream(protocol.Protocol):
+    def connectionMade(self):
+        self.transport.abortConnection()
 
 
 class Agent(client.Agent):
@@ -277,11 +346,20 @@ class RedirectAgent(client.RedirectAgent):
     """
 
     def _handleResponse(self, response, method, uri, headers, redirectCount):
+        if redirectCount >= self._redirectLimit:
+            # Return the final redirect to the browser instead of turning a
+            # bounded internal HTTPS upgrade into a gateway error. cbResponse
+            # still validates its destination before exposing Location.
+            return response
         locationHeaders = response.headers.getRawHeaders(b'location', [])
         if locationHeaders:
             location = self._resolveLocation(uri, locationHeaders[0])
             parsed = client.URI.fromBytes(location)
             if parsed.scheme == b'https':
+                if response.code in (301, 302) and method not in (b'GET', b'HEAD'):
+                    # Match browser form behavior when an HTTP onion upgrades
+                    # to HTTPS: 301/302 change the next request to a bodyless GET.
+                    return self._handleRedirect(response, b'GET', uri, headers, redirectCount)
                 return client.RedirectAgent._handleResponse(self, response, method, uri, headers, redirectCount)
 
         return response
@@ -345,10 +423,15 @@ class T2WRequest(http.Request):
 
         self.decoderGzip = None
         self.encoderGzip = None
+        self.decoded_response_bytes = 0
+        self.forwarded_response_bytes = 0
 
         self.pool = pool
 
     def forwardData(self, data, end=False):
+        self.forwarded_response_bytes += len(data)
+        if self.forwarded_response_bytes > config.max_response_bytes:
+            raise ResponseTooLarge()
         if not self.startedWriting:
             if self.obj.client_supports_gzip:
                 self.setHeader(b'content-encoding', b'gzip')
@@ -380,8 +463,8 @@ class T2WRequest(http.Request):
 
         if len(data) >= config.bufsize * 2:
             if self.obj.special_content == 'HTML':
-                if not self.header_injected and data.find(b"<body") != -1:
-                    data = re.sub(rexp['body'], partial(self.add_banner, self.banner), data)
+                if not self.header_injected and rexp['body'].search(data) is not None:
+                    data = re.sub(rexp['body'], partial(self.add_banner, self.banner), data, count=1)
                     self.header_injected = True
 
             if config.avoid_rewriting_visible_content and self.obj.special_content == 'HTML':
@@ -408,8 +491,8 @@ class T2WRequest(http.Request):
 
         if data:
             if self.obj.special_content == 'HTML':
-                if not self.header_injected and data.find(b"<body") != -1:
-                    data = re.sub(rexp['body'], partial(self.add_banner, self.banner), data)
+                if not self.header_injected and rexp['body'].search(data) is not None:
+                    data = re.sub(rexp['body'], partial(self.add_banner, self.banner), data, count=1)
                     self.header_injected = True
 
             if config.avoid_rewriting_visible_content and self.obj.special_content == 'HTML':
@@ -497,7 +580,7 @@ class T2WRequest(http.Request):
     def handleError(self, failure, error=500):
         if self._disconnected or getattr(self, 'request_timed_out', False):
             return None
-        log.err(failure)
+        log.msg('Upstream request failed: %s' % failure.type.__name__)
         if self.startedWriting:
             self.transport.abortConnection()
             return None
@@ -510,37 +593,29 @@ class T2WRequest(http.Request):
 
     def unzip(self, data, end=False):
         data1, data2 = b'', b''
-
-        try:
-            if self.decoderGzip is None:
-                self.decoderGzip = zlib.decompressobj(16 + zlib.MAX_WBITS)
-
-            if data:
-                data1 = self.decoderGzip.decompress(data)
-
-            if end:
-                data2 = self.decoderGzip.flush()
-
-        except:
-            pass
+        if self.decoderGzip is None:
+            self.decoderGzip = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        remaining = config.max_response_bytes - self.decoded_response_bytes
+        if data:
+            data1 = self.decoderGzip.decompress(data, remaining + 1)
+            if len(data1) > remaining or self.decoderGzip.unconsumed_tail:
+                raise ResponseTooLarge()
+        if end:
+            data2 = self.decoderGzip.flush(remaining - len(data1) + 1)
+            if len(data1) + len(data2) > remaining:
+                raise ResponseTooLarge()
+        self.decoded_response_bytes += len(data1) + len(data2)
 
         return data1 + data2
 
     def zip(self, data, end=False):
         data1, data2 = b'', b''
-
-        try:
-            if self.encoderGzip is None:
-                self.encoderGzip = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-
-            if data:
-                data1 = self.encoderGzip.compress(data)
-
-            if end:
-                data2 = self.encoderGzip.flush()
-
-        except:
-            pass
+        if self.encoderGzip is None:
+            self.encoderGzip = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        if data:
+            data1 = self.encoderGzip.compress(data)
+        if end:
+            data2 = self.encoderGzip.flush()
 
         return data1 + data2
 
@@ -626,7 +701,7 @@ class T2WRequest(http.Request):
 
         staticpath = request.uri.split(b'?', 1)[0].decode('utf-8', 'replace')
         staticpath = re.sub('/$', '/index.html', staticpath)
-        staticpath = re.sub('^(/antanistaticmap/)?', '', staticpath)
+        staticpath = re.sub('^(/(?:static|antanistaticmap)/)?', '', staticpath)
         staticpath = re.sub('^/', '', staticpath)
 
         resource_is_local = (config.mode != "TRANSLATION" and
@@ -634,6 +709,9 @@ class T2WRequest(http.Request):
                             isIPAddress(request.host) or \
                             isIPv6Address(request.host) or \
                             request.uri.startswith(b'/antanistaticmap/') or \
+                            (request.uri.startswith(b'/static/') and
+                             (staticpath in static_resources or
+                              staticpath in ('stats/yesterday', 'blocklist', 'notification'))) or \
                             request.uri.startswith(b'/checktor')
 
         producer = client.FileBodyProducer(self.content) if self.received_body_bytes else None
@@ -671,26 +749,21 @@ class T2WRequest(http.Request):
                 self.obj.client_supports_gzip = True
 
         # 2: Content delivery stage
-        # we need to verify if the requested resource is local (/antanistaticmap/*) or remote
+        # we need to verify if the requested resource is local (/static/*) or remote
         # because some checks must be done only for remote requests;
         # in fact local content is always served (css, js, and png in fact are used in errors)
         if resource_is_local:
             # the requested resource is local, we deliver it directly
             try:
                 if staticpath == 'checktor':
-                    self.setHeader(b'access-control-allow-origin', b'*')
-                    self.setHeader(b'access-control-expose-headers', b'x-check-tor')
-
-                    # response answer compliant to https://check.torproject.org/api/ip
-                    if self.obj.client_uses_tor:
-                        content = "{\"IsTor\": true,\"IP\":\"" + self.obj.client_ip + "\"}"
-                    else:
-                        content = "{\"IsTor\": false,\"IP\":\"" + self.obj.client_ip + "\"}"
-
-                    self.writeContent(content)
+                    self.setHeader(b'content-type', b'application/json')
+                    self.writeContent(b'{"IsTor":true}' if self.obj.client_uses_tor else b'{"IsTor":false}')
                     return
 
                 elif staticpath == "stats/yesterday":
+                    if not config.publish_stats:
+                        self.sendError(404)
+                        return
                     self.setHeader(b'content-type', 'application/json')
                     content = yield rpc("get_yesterday_stats")
                     self.writeContent(content)
@@ -742,15 +815,15 @@ class T2WRequest(http.Request):
                     return
 
                 else:
-                    if type(antanistaticmap[staticpath]) == bytes:
+                    if type(static_resources[staticpath]) == bytes:
                         _, ext = os.path.splitext(staticpath)
-                        self.setHeader(b'content-type', mimetypes.types_map[ext])
-                        content = antanistaticmap[staticpath]
+                        self.setHeader(b'content-type', mimetypes.guess_type(staticpath)[0] or 'application/octet-stream')
+                        content = static_resources[staticpath]
                         self.writeContent(content)
                         return
 
-                    elif type(antanistaticmap[staticpath]) == PageTemplate:
-                        flattenString(self, antanistaticmap[staticpath]).addCallback(self.writeContent)
+                    elif type(static_resources[staticpath]) == PageTemplate:
+                        flattenString(self, static_resources[staticpath]).addCallback(self.writeContent)
 
             except Exception:
                 pass
@@ -872,6 +945,16 @@ class T2WRequest(http.Request):
             self.var['errorcode'] = int(response.code) - 600
             return flattenString(self, templates['error_sock.tpl']).addCallback(self.writeContent)
 
+        if isinstance(response.length, int) and response.length > config.max_response_bytes:
+            response.deliverBody(AbortUpstream())
+            return self.sendError(502)
+
+        if 300 <= response.code < 400:
+            locations = response.headers.getRawHeaders(b'location', [])
+            if locations and not all(safe_browser_redirect(value, self.var['basehost']) for value in locations):
+                response.deliverBody(AbortUpstream())
+                return self.sendError(502)
+
         self.setResponseCode(response.code)
         self.processResponseHeaders(response.headers)
 
@@ -886,10 +969,10 @@ class T2WRequest(http.Request):
         finished = defer.Deferred()
         if self.obj.special_content:
             finished.addCallback(self.handleFixEnd)
-            response.deliverBody(BodyStreamer(self.handleFixPart, finished))
+            response.deliverBody(BodyStreamer(self.handleFixPart, finished, config.max_response_bytes))
         else:
             finished.addCallback(self.handleForwardEnd)
-            response.deliverBody(BodyStreamer(self.handleForwardPart, finished))
+            response.deliverBody(BodyStreamer(self.handleForwardPart, finished, config.max_response_bytes))
 
         return finished
 
@@ -902,6 +985,14 @@ class T2WRequest(http.Request):
 
         if keyLower == b'transfer-encoding' and valueLower == b'chunked':
             # this header needs to be stripped
+            return
+
+        elif keyLower in (
+            b'refresh', b'link', b'alt-svc', b'content-security-policy-report-only',
+            b'reporting-endpoints', b'report-to', b'nel',
+        ):
+            # These headers can trigger browser requests or reporting to
+            # clearnet origins without a visitor clicking a link.
             return
 
         elif keyLower == b'content-encoding' and valueLower == b'gzip':
@@ -918,6 +1009,13 @@ class T2WRequest(http.Request):
                 self.obj.special_content = 'CSS'
             elif valueLower.startswith(b'text/xml'):
                 self.obj.special_content = 'XML'
+
+        elif keyLower == b'content-security-policy':
+            values = [rewrite_csp(value, self.var['basehost'], self.proto, self.port)
+                      for value in values]
+            values = [value for value in values if value.strip()]
+            if not values:
+                return
 
         elif keyLower == b'content-length':
             self.receivedContentLen = valueLower
@@ -937,7 +1035,8 @@ class T2WRequest(http.Request):
         self.responseHeaders.setRawHeaders(key, values)
 
     def processResponseHeaders(self, headers):
-        rpc("update_stats", str(self.obj.onion.replace(".onion", "")))
+        if config.publish_stats:
+            rpc("update_stats", str(self.obj.onion.replace(".onion", "")))
 
         hop_headers = {b'connection', b'keep-alive', b'proxy-authenticate',
                        b'proxy-authorization', b'te', b'trailer',
@@ -1210,7 +1309,7 @@ def SigQUIT(SIG, FRM):
 
 
 def main():
-    global config, ipv4, ipv6, rexp, antanistaticmap, templates, pool
+    global config, ipv4, ipv6, rexp, static_resources, templates, pool
     global t2w_daemon, block_list, block_regexps, crawler_list, tor_exits_list
     global hosts_map, ports, rpc_factory
     set_pdeathsig(signal.SIGINT)
@@ -1268,7 +1367,7 @@ def main():
     # ##############################################################################
 
     rexp = {
-        'body': re.compile(rb'(<body.*?\s*>)', re.I),
+        'body': re.compile(rb'(<body\b[^>]*>)', re.I),
         'w2t': re.compile(rb'(http:|https:)?\/\/([a-z2-7]{56})' + config.basehost.encode('utf-8'), re.I),
         't2w': re.compile(rb'(http:|https:)?\/\/([a-z2-7]{56})\.onion', re.I),
         'html_t2w': re.compile(
@@ -1281,7 +1380,7 @@ def main():
     # Here we make a file caching to not handle I/O
     # at run-time and achieve better performance
     # ##############################################################################
-    antanistaticmap = {}
+    static_resources = {}
 
     # system default static files
     sys_static_dir = os.path.join(config.sysdatadir, "static/")
@@ -1290,7 +1389,7 @@ def main():
             for basename in files:
                 filename = os.path.join(root, basename)
                 f = FilePath(filename)
-                antanistaticmap[filename.replace(sys_static_dir, "")] = f.getContent()
+                static_resources[filename.replace(sys_static_dir, "")] = f.getContent()
 
     # user defined static files
     usr_static_dir = os.path.join(config.datadir, "static/")
@@ -1299,7 +1398,7 @@ def main():
             for basename in files:
                 filename = os.path.join(root, basename)
                 f = FilePath(filename)
-                antanistaticmap[filename.replace(usr_static_dir, "")] = f.getContent()
+                static_resources[filename.replace(usr_static_dir, "")] = f.getContent()
     # ##############################################################################
 
     templates = {}

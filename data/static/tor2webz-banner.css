@@ -1,0 +1,15 @@
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;font-display:swap;src:url('/static/jetbrains-mono-latin.woff2') format('woff2')}
+#t2wz-banner{all:initial;box-sizing:border-box;display:block;position:relative;z-index:2147483000;margin:0;padding:0;background:rgba(10,10,10,.9);color:#cbd5e1;border:1px solid rgba(100,116,139,.46);border-radius:2px;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;box-shadow:0 28px 80px rgba(0,0,0,.42)}
+#t2wz-banner *{box-sizing:border-box;font-family:inherit}
+#t2wz-banner .t2wz-top{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.25rem;padding:.9rem clamp(1.25rem,4vw,2rem);border-bottom:1px solid rgba(100,116,139,.24)}
+#t2wz-banner img{display:block;width:4.5rem;height:auto}
+#t2wz-banner .t2wz-label{color:#64748b;font-size:.625rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase}
+#t2wz-banner .t2wz-body{padding:1.15rem clamp(1.25rem,5vw,2.5rem);color:#64748b;font-size:.625rem;line-height:1.8}
+#t2wz-banner strong{color:#cbd5e1;font-size:inherit}
+#t2wz-banner button{all:unset;display:inline-block;padding:.35rem 0;color:#64748b;font-family:inherit;font-size:.625rem;cursor:pointer;text-decoration:underline;text-underline-offset:.3em}
+#t2wz-banner button:focus-visible{outline:1px solid #cbd5e1;outline-offset:4px}
+#t2wz-banner.is-collapsed .t2wz-body{display:none}
+@media(max-width:640px){#t2wz-banner .t2wz-label{display:none}#t2wz-banner img{width:3.75rem}}
+
+#t2wz-banner a{color:#cbd5e1;font:inherit;text-decoration:underline;text-underline-offset:.3em}
+#t2wz-banner a:focus-visible{outline:1px solid #cbd5e1;outline-offset:4px}

@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import re
+import sys
 
 import pytest
 from twisted.internet import defer, protocol
@@ -12,6 +13,16 @@ from conftest import ONION
 from tor2web.utils.misc import is_onion, re_sub
 from tor2web.utils.socks import SOCKS5ClientFactory, SOCKSError
 from tor2web.utils.lists import List, TorExitNodeList
+from tor2web.utils.config import Config
+
+
+@pytest.mark.parametrize('setting', ['smtpmailto_notifications', 'smtpmailto_exceptions'])
+def test_builtin_smtp_recipients_rejected(tmp_path, monkeypatch, setting):
+    config_file = tmp_path / 'tor2web.conf'
+    config_file.write_text('[main]\n%s = test@example.invalid\n' % setting)
+    monkeypatch.setattr(sys, 'argv', ['tor2webz', '-c', str(config_file)])
+    with pytest.raises(ValueError, match='SMTP notifications are disabled'):
+        Config()
 
 
 def test_valid_onion_and_checksum():
@@ -132,3 +143,48 @@ def test_socks_agent_refuses_clearnet_redirect_destinations():
     agent = SOCKS5Agent(Clock())
     with pytest.raises(SchemeNotSupported):
         agent._getEndpoint(b'https', b'example.com', 443)
+
+
+@pytest.mark.parametrize('code', [301,302,303])
+def test_https_upgrade_after_post_uses_browser_get_semantics(code):
+    from types import SimpleNamespace
+    from twisted.web.http_headers import Headers
+    from tor2web.t2w import RedirectAgent
+    requests=[]
+    final=SimpleNamespace(code=200,headers=Headers(),setPreviousResponse=lambda response: None)
+    class RecordingAgent:
+        def request(self, method, uri, headers=None, bodyProducer=None):
+            requests.append((method,uri,headers,bodyProducer))
+            return defer.succeed(final)
+    uri=b'http://' + ONION.encode() + b'/?q=dog'
+    response=SimpleNamespace(code=code,headers=Headers({b'Location':[uri.replace(b'http:',b'https:')]}))
+    result=[];failures=[]
+    RedirectAgent(RecordingAgent())._handleResponse(response,b'POST',uri,Headers({b'Cookie':[b'session=private']}),0).addCallbacks(result.append,failures.append)
+    assert not failures and result==[final]
+    method,target,headers,body=requests[0]
+    assert method==b'GET' and target.startswith(b'https://') and body is None
+    assert not headers.hasHeader(b'Cookie')
+
+
+
+def test_upstream_error_logs_exclude_urls_and_query_secrets(monkeypatch):
+    from types import SimpleNamespace
+    from tor2web import t2w
+    logged=[]
+    monkeypatch.setattr(t2w.log,'msg',logged.append)
+    request=SimpleNamespace(_disconnected=False,startedWriting=False,sendError=lambda code:code)
+    assert t2w.T2WRequest.handleError(request,Failure(ValueError('https://private.invalid/?token=secret')),502)==502
+    assert logged==['Upstream request failed: ValueError']
+
+
+
+def test_exhausted_internal_https_upgrade_returns_redirect_to_browser():
+    from types import SimpleNamespace
+    from twisted.web.http_headers import Headers
+    from tor2web.t2w import RedirectAgent
+    class NoMoreRequests:
+        def request(self,*args,**kwargs):
+            raise AssertionError('internal redirect budget must remain bounded')
+    uri=b'https://'+ONION.encode()+b'/search'
+    response=SimpleNamespace(code=302,headers=Headers({b'Location':[uri+b'/error']}))
+    assert RedirectAgent(NoMoreRequests(),1)._handleResponse(response,b'GET',uri,Headers(),1) is response

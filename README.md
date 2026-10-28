@@ -71,11 +71,9 @@ this application.
 
 ## Operator interface
 
-The operator interface uses the exact shared stylesheet from HTTPS.CL, a local
-copy of JetBrains Mono, the HTTPS.CL favicon, and the Tor2webz wordmark. It makes
-no third-party resource requests. Source links are controlled by `source_url`
-and are disabled in the current deployment. Original attribution remains in the
-privacy notice and license.
+The operator interface makes no third-party resource requests.
+Source links are controlled by `source_url` and are disabled in deployment.
+Original attribution remains in the privacy notice and license.
 
 The separate loopback contact service in `tor2web/contact.py` delivers only to
 `contacto@https.cl` or `abuse@https.cl`, through a configured authenticated SMTP
